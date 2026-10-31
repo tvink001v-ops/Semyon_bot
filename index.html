@@ -35,6 +35,7 @@
         .message { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; box-shadow: 0 1px 1px rgba(0,0,0,0.05); word-wrap: break-word; overflow-wrap: anywhere; }
         .message.incoming { background: white; align-self: flex-start; border-top-left-radius: 4px; }
         .message.outgoing { background: #effdde; align-self: flex-end; border-top-right-radius: 4px; }
+        .status-line { font-size: 12px; color: #8a8a8a; text-align: center; padding: 4px; }
 
         /* Поле ввода сообщения */
         .input-area { background: white; padding: 10px 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #dadde1; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
@@ -70,11 +71,16 @@
     </div>
 
     <script>
-        // ВНИМАНИЕ: токен в браузере виден всем. Для продакшена — только через свой сервер.
-        // Этот токен уже засветился — перевыпустите его через @BotFather → /revoke.
-        const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
-        const TG_API = 'https://api.telegram.org/bot' + BOT_TOKEN;
-        const PROXY = 'https://api.allorigins.win/raw?url=';
+        // ===== НАСТРОЙКИ =====
+        // 1. Вставьте НОВЫЙ токен (старый засветился — перевыпустите через @BotFather → /revoke)
+        const BOT_TOKEN = 'ВСТАВЬТЕ_НОВЫЙ_ТОКЕН_СЮДА';
+
+        // 2. Вставьте URL вашего Cloudflare Worker (без слэша на конце)
+        //    Пример: 'https://telegram-proxy.vash-subdomen.workers.dev'
+        const WORKER_URL = 'ВСТАВЬТЕ_URL_ВАШЕГО_WORKER_СЮДА';
+
+        // ===== ДАЛЬШЕ НИЧЕГО МЕНЯТЬ НЕ НУЖНО =====
+        const API = WORKER_URL + '/bot' + BOT_TOKEN;
 
         let currentChatId = null;
         let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId'), 10) || 0;
@@ -95,20 +101,14 @@
         async function checkNewMessages() {
             if (polling) return;
             polling = true;
-            const targetUrl = `${TG_API}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
-            const proxyUrl = PROXY + encodeURIComponent(targetUrl);
+            const url = `${API}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
             try {
-                const response = await fetch(proxyUrl);
-                if (!response.ok) return;
-
-                const wrapperText = await response.text();
-                let data;
-                try {
-                    data = JSON.parse(wrapperText);
-                } catch (e) {
-                    console.error('Прокси вернул не JSON:', wrapperText.slice(0, 200));
+                const response = await fetch(url);
+                if (!response.ok) {
+                    console.warn('Telegram API HTTP', response.status);
                     return;
                 }
+                const data = await response.json();
 
                 if (Array.isArray(data.result) && data.result.length > 0) {
                     data.result.forEach(update => {
@@ -198,12 +198,11 @@
             const text = input.value.trim();
             if (!text || !currentChatId) return;
 
-            const targetUrl = `${TG_API}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`;
-            const proxyUrl = PROXY + encodeURIComponent(targetUrl);
+            const url = `${API}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`;
 
             btn.disabled = true;
             try {
-                const response = await fetch(proxyUrl);
+                const response = await fetch(url);
                 if (response.ok) {
                     chatsData[currentChatId].messages.push({ type: 'outgoing', text });
                     renderMessage('outgoing', text);
@@ -211,13 +210,20 @@
                     input.value = '';
                     saveToStorage();
                 } else {
-                    alert('Не удалось отправить.');
+                    const errText = await response.text().catch(() => '');
+                    alert('Не удалось отправить. Ответ сервера: ' + response.status + ' ' + errText.slice(0, 200));
                 }
             } catch (error) {
-                alert('Ошибка сети.');
+                alert('Ошибка сети: ' + error.message);
             } finally {
                 btn.disabled = false;
             }
+        }
+
+        // Проверка конфигурации
+        if (BOT_TOKEN.includes('ВСТАВЬТЕ') || WORKER_URL.includes('ВСТАВЬТЕ')) {
+            console.error('Заполните BOT_TOKEN и WORKER_URL в блоке НАСТРОЙКИ.');
+            alert('Внимание: не заполнены BOT_TOKEN и/или WORKER_URL. Смотрите блок НАСТРОЙКИ в коде.');
         }
 
         initData();
