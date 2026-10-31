@@ -43,51 +43,96 @@
         </div>
     </div>
     <script>
-        const T = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY', P = 'https://allorigins.win';
-        let id = null, last = parseInt(localStorage.getItem('last')) || 0, db = JSON.parse(localStorage.getItem('db')) || {}, run = false;
+        // 🔑 Токен — меняй только эту строку
+        const T = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
+        const API = 'https://api.telegram.org/bot' + T;
+        const P = 'https://api.allorigins.win/raw?url=';
 
-        const req = async (u) => { try { const r = await fetch(P + encodeURIComponent(u)); return r.ok ? await r.json() : null; } catch { return null; } };
-        const save = () => { localStorage.setItem('db', JSON.stringify(db)); localStorage.setItem('last', last); };
-        const go = (s) => { document.body.classList.toggle('view-chat', s); if(!s) id = null; };
+        let id = null,
+            last = parseInt(localStorage.getItem('last')) || 0,
+            db = JSON.parse(localStorage.getItem('db')) || {},
+            run = false;
 
-        function renderMsg(t, txt) { const d = document.createElement('div'); d.className = `msg ${t}`; d.innerText = txt; box.appendChild(d); box.scrollTop = box.scrollHeight; }
+        const req = async (u) => {
+            try {
+                const r = await fetch(P + encodeURIComponent(u));
+                return r.ok ? await r.json() : null;
+            } catch { return null; }
+        };
 
-        function openChat(cId) { id = cId; go(1); title.innerText = db[id].name; box.innerHTML = ''; db[id].msgs.forEach(m => renderMsg(m.t, m.x)); }
+        const save = () => {
+            localStorage.setItem('db', JSON.stringify(db));
+            localStorage.setItem('last', last);
+        };
+
+        const go = (s) => {
+            document.body.classList.toggle('view-chat', s);
+            if (!s) id = null;
+        };
+
+        function renderMsg(t, txt) {
+            const d = document.createElement('div');
+            d.className = `msg ${t}`;
+            d.innerText = txt;
+            box.appendChild(d);
+            box.scrollTop = box.scrollHeight;
+        }
+
+        function openChat(cId) {
+            id = cId;
+            go(1);
+            title.innerText = db[id].name;
+            box.innerHTML = '';
+            db[id].msgs.forEach(m => renderMsg(m.t, m.x));
+        }
 
         function addList(cId, name) {
             let el = document.querySelector(`[data-id="${cId}"]`);
             if (!el) {
-                el = document.createElement('div'); el.className = 'item'; el.setAttribute('data-id', cId);
-                el.onclick = () => openChat(cId); list.insertBefore(el, list.firstChild);
+                el = document.createElement('div');
+                el.className = 'item';
+                el.setAttribute('data-id', cId);
+                el.onclick = () => openChat(cId);
+                list.insertBefore(el, list.firstChild);
             }
             const lastM = db[cId].msgs[db[cId].msgs.length - 1]?.x || '';
-            el.innerHTML = `<b>${name}</b><p style="font-size:12px;color:#8a8a8a">${lastM.substring(0,25)}</p>`;
+            el.innerHTML = `<b>${name}</b><p style="font-size:12px;color:#8a8a8a">${lastM.substring(0, 25)}</p>`;
         }
 
         async function loop() {
-            if (run) return; run = true;
-            const res = await req(`https://telegram.org{T}/getUpdates?offset=${last + 1}&timeout=1`);
-            if (res) {
-                const data = JSON.parse(res.contents);
-                if (data?.result?.length) data.result.forEach(u => {
+            if (run) return;
+            run = true;
+            const data = await req(`${API}/getUpdates?offset=${last + 1}&timeout=1`);
+            if (data?.ok && data.result?.length) {
+                data.result.forEach(u => {
                     last = u.update_id;
                     if (u.message?.text) {
-                        const cid = u.message.chat.id, name = u.message.from.first_name || 'User';
+                        const cid = u.message.chat.id;
+                        const name = u.message.from.first_name || 'User';
                         if (!db[cid]) db[cid] = { name, msgs: [] };
-                        db[cid].msgs.push({ t: 'incoming', x: u.message.text }); addList(cid, name);
+                        db[cid].msgs.push({ t: 'incoming', x: u.message.text });
+                        addList(cid, name);
                         if (String(id) === String(cid)) renderMsg('incoming', u.message.text);
                     }
-                }); save();
-            } run = false;
+                });
+                save();
+            }
+            run = false;
         }
 
         async function send() {
-            const txt = inp.value.trim(); if (!txt || !id) return;
+            const txt = inp.value.trim();
+            if (!txt || !id) return;
             inp.value = '';
-            const res = await req(`https://telegram.org{T}/sendMessage?chat_id=${id}&text=${encodeURIComponent(txt)}`);
-            if (res) {
-                db[id].msgs.push({ t: 'outgoing', x: txt }); renderMsg('outgoing', txt); addList(id, db[id].name); save();
-            } else alert('Ошибка');
+            const res = await req(`${API}/sendMessage?chat_id=${id}&text=${encodeURIComponent(txt)}`);
+            if (res?.ok) {
+                db[id].msgs.push({ t: 'outgoing', x: txt });
+                renderMsg('outgoing', txt);
+                addList(id, db[id].name);
+                save();
+            } else {
+                alert('Ошибка');
+            }
         }
 
         Object.keys(db).forEach(c => addList(c, db[c].name));
