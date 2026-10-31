@@ -3,211 +3,95 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telegram Бот</title>
+    <title>TG</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body, html { height: 100%; overflow: hidden; background-color: #ffffff; }
-        .app-container { display: flex; width: 200vw; height: 100%; transition: transform 0.25s ease-in-out; }
-        .screen-contacts { width: 100vw; height: 100%; display: flex; flex-direction: column; background: white; }
-        .header { height: 60px; background: #507299; color: white; display: flex; align-items: center; padding: 0 20px; font-weight: bold; font-size: 18px; }
-        .contacts-list { flex: 1; overflow-y: auto; }
-        .contact-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid #f0f2f5; cursor: pointer; }
-        .contact-item:active { background-color: #f2f6fa; }
-        .avatar { width: 48px; height: 48px; background: #6c7a89; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; font-size: 16px; flex-shrink: 0; }
-        .contact-details { min-width: 0; }
-        .contact-details b { font-size: 16px; color: #000; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .contact-details p { font-size: 13px; color: #8a8a8a; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .status-line { font-size: 12px; color: #8a8a8a; padding: 10px 20px; text-align: center; }
-        .screen-chat { width: 100vw; height: 100%; display: flex; flex-direction: column; background-color: #f4f4f5; }
-        .chat-header { height: 60px; background: white; border-bottom: 1px solid #dadde1; display: flex; align-items: center; padding: 0 10px; font-weight: bold; }
-        .back-btn { background: none; border: none; font-size: 24px; color: #507299; padding: 10px; margin-right: 5px; cursor: pointer; }
-        .messages-container { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-        .message { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; word-wrap: break-word; overflow-wrap: anywhere; }
-        .message.incoming { background: white; align-self: flex-start; border-top-left-radius: 4px; }
-        .message.outgoing { background: #effdde; align-self: flex-end; border-top-right-radius: 4px; }
-        .sender-name { font-size: 11px; color: #507299; font-weight: bold; margin-bottom: 2px; display: block; }
-        .input-area { background: white; padding: 10px 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #dadde1; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
-        .input-area input { flex: 1; padding: 12px 16px; border: 1px solid #dbdbdb; border-radius: 24px; outline: none; font-size: 15px; background: #f9f9f9; }
-        .input-area button { background: #4a90e2; color: white; border: none; padding: 10px 18px; border-radius: 24px; cursor: pointer; font-weight: bold; font-size: 15px; }
-        .input-area button:disabled { opacity: 0.5; }
-        .view-chat .app-container { transform: translateX(-100vw); }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body, html { height: 100%; overflow: hidden; }
+        .app { display: flex; width: 200vw; height: 100%; transition: transform 0.2s; }
+        .screen { width: 100vw; height: 100%; display: flex; flex-direction: column; background: #f4f4f5; }
+        .header { height: 50px; background: #507299; color: white; display: flex; align-items: center; padding: 0 15px; font-weight: bold; }
+        .list { flex: 1; overflow-y: auto; background: white; }
+        .item { padding: 15px; border-bottom: 1px solid #f0f2f5; cursor: pointer; }
+        .chat-hdr { background: white; border-bottom: 1px solid #dadde1; }
+        .back { background: none; border: none; font-size: 20px; color: #507299; padding: 10px; cursor: pointer; }
+        .box { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
+        .msg { max-width: 75%; padding: 8px 12px; border-radius: 12px; font-size: 15px; }
+        .incoming { background: white; align-self: flex-start; }
+        .outgoing { background: #effdde; align-self: flex-end; }
+        .input { background: white; padding: 10px; display: flex; gap: 10px; border-top: 1px solid #dadde1; }
+        .input input { flex: 1; padding: 10px; border: 1px solid #dbdbdb; border-radius: 20px; outline: none; }
+        .input button { background: #4a90e2; color: white; border: none; padding: 0 15px; border-radius: 20px; cursor: pointer; }
+        .view-chat .app { transform: translateX(-100vw); }
     </style>
 </head>
 <body>
-    <div class="app-container">
-        <div class="screen-contacts">
-            <div class="header">Сообщения</div>
-            <div class="contacts-list" id="contactsList"></div>
-            <div class="status-line" id="statusLine">Подключение...</div>
+    <div class="app">
+        <div class="screen">
+            <div class="header">Чаты</div>
+            <div class="list" id="list"></div>
         </div>
-        <div class="screen-chat">
-            <div class="chat-header">
-                <button class="back-btn" onclick="goBack()">←</button>
-                <div id="currentChatName">Чат</div>
+        <div class="screen">
+            <div class="header chat-hdr">
+                <button class="back" onclick="go(0)">←</button>
+                <span id="title" style="color:#000">Чат</span>
             </div>
-            <div class="messages-container" id="messagesContainer"></div>
-            <div class="input-area">
-                <input type="text" id="messageInput" placeholder="Сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
-                <button id="sendBtn" onclick="sendMessage()">Отп.</button>
+            <div class="box" id="box"></div>
+            <div class="input">
+                <input type="text" id="inp" placeholder="Сообщение..." onkeydown="if(event.key==='Enter') send()">
+                <button onclick="send()">Отп.</button>
             </div>
         </div>
     </div>
-
     <script>
-        // ВАШ ТОКЕН
-        const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
-        
-        // Новый прокси, который не блокирует github.io
-        const PROXY = 'https://thingproxy.freeboard.io/fetch/';
+        const T = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY', P = 'https://allorigins.win';
+        let id = null, last = parseInt(localStorage.getItem('last')) || 0, db = JSON.parse(localStorage.getItem('db')) || {}, run = false;
 
-        let currentChatId = null;
-        let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId'), 10) || 0;
-        let chatsData = JSON.parse(localStorage.getItem('chatsData')) || {};
-        let polling = false;
-        const myId = 9056510066;
+        const req = async (u) => { try { const r = await fetch(P + encodeURIComponent(u)); return r.ok ? await r.json() : null; } catch { return null; } };
+        const save = () => { localStorage.setItem('db', JSON.stringify(db)); localStorage.setItem('last', last); };
+        const go = (s) => { document.body.classList.toggle('view-chat', s); if(!s) id = null; };
 
-        function saveToStorage() {
-            localStorage.setItem('chatsData', JSON.stringify(chatsData));
-            localStorage.setItem('lastUpdateId', String(lastUpdateId));
-        }
+        function renderMsg(t, txt) { const d = document.createElement('div'); d.className = `msg ${t}`; d.innerText = txt; box.appendChild(d); box.scrollTop = box.scrollHeight; }
 
-        function initData() {
-            Object.keys(chatsData).forEach(chatId => {
-                addContactToList(chatId, chatsData[chatId].name);
-            });
-        }
+        function openChat(cId) { id = cId; go(1); title.innerText = db[id].name; box.innerHTML = ''; db[id].msgs.forEach(m => renderMsg(m.t, m.x)); }
 
-        async function checkNewMessages() {
-            if (polling) return;
-            polling = true;
-            
-            const targetUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
-            const url = PROXY + targetUrl; // thingproxy требует просто склейку URL
-            
-            try {
-                const response = await fetch(url);
-                if (!response.ok) return;
-                const data = await response.json();
-
-                if (Array.isArray(data.result) && data.result.length > 0) {
-                    data.result.forEach(update => {
-                        lastUpdateId = update.update_id;
-                        if (update.message && update.message.text) {
-                            const chatId = update.message.chat.id;
-                            if (update.message.from.id === myId) return;
-
-                            const isGroup = update.message.chat.type === 'group' || update.message.chat.type === 'supergroup';
-                            const chatName = isGroup ? (update.message.chat.title || 'Группа') : (update.message.from.first_name || 'Пользователь');
-                            const text = update.message.text;
-                            const senderName = isGroup ? (update.message.from.first_name || update.message.from.username || 'Участник') : null;
-
-                            if (!chatsData[chatId]) {
-                                chatsData[chatId] = { name: chatName, messages: [] };
-                            }
-                            
-                            chatsData[chatId].messages.push({ type: 'incoming', text: text, senderName: senderName });
-                            addContactToList(chatId, chatName);
-                            
-                            if (String(currentChatId) === String(chatId)) {
-                                renderMessage('incoming', text, true, senderName);
-                            }
-                        }
-                    });
-                    saveToStorage();
-                }
-            } catch (error) {
-                console.error('Ошибка:', error);
-            } finally {
-                polling = false;
+        function addList(cId, name) {
+            let el = document.querySelector(`[data-id="${cId}"]`);
+            if (!el) {
+                el = document.createElement('div'); el.className = 'item'; el.setAttribute('data-id', cId);
+                el.onclick = () => openChat(cId); list.insertBefore(el, list.firstChild);
             }
+            const lastM = db[cId].msgs[db[cId].msgs.length - 1]?.x || '';
+            el.innerHTML = `<b>${name}</b><p style="font-size:12px;color:#8a8a8a">${lastM.substring(0,25)}</p>`;
         }
 
-        function addContactToList(chatId, username) {
-            const list = document.getElementById('contactsList');
-            let item = document.querySelector(`[data-chat-id="${CSS.escape(String(chatId))}"]`);
-            const lastMsg = chatsData[chatId].messages[chatsData[chatId].messages.length - 1]?.text || '';
-            const preview = lastMsg.length > 30 ? lastMsg.substring(0, 30) + '...' : lastMsg;
-
-            if (!item) {
-                item = document.createElement('div');
-                item.className = 'contact-item';
-                item.setAttribute('data-chat-id', String(chatId));
-                list.insertBefore(item, list.firstChild);
-            }
-
-            item.innerHTML = `
-                <div class="avatar">${username.substring(0, 2).toUpperCase()}</div>
-                <div class="contact-details">
-                    <b>${username}</b>
-                    <p>${preview}</p>
-                </div>
-            `;
-            item.onclick = () => selectChat(chatId);
+        async function loop() {
+            if (run) return; run = true;
+            const res = await req(`https://telegram.org{T}/getUpdates?offset=${last + 1}&timeout=1`);
+            if (res) {
+                const data = JSON.parse(res.contents);
+                if (data?.result?.length) data.result.forEach(u => {
+                    last = u.update_id;
+                    if (u.message?.text) {
+                        const cid = u.message.chat.id, name = u.message.from.first_name || 'User';
+                        if (!db[cid]) db[cid] = { name, msgs: [] };
+                        db[cid].msgs.push({ t: 'incoming', x: u.message.text }); addList(cid, name);
+                        if (String(id) === String(cid)) renderMsg('incoming', u.message.text);
+                    }
+                }); save();
+            } run = false;
         }
 
-        function selectChat(chatId) {
-            currentChatId = chatId;
-            document.body.classList.add('view-chat');
-            document.getElementById('currentChatName').innerText = chatsData[chatId].name;
-            const container = document.getElementById('messagesContainer');
-            container.innerHTML = '';
-            chatsData[chatId].messages.forEach(msg => renderMessage(msg.type, msg.text, false, msg.senderName));
-            container.scrollTop = container.scrollHeight;
+        async function send() {
+            const txt = inp.value.trim(); if (!txt || !id) return;
+            inp.value = '';
+            const res = await req(`https://telegram.org{T}/sendMessage?chat_id=${id}&text=${encodeURIComponent(txt)}`);
+            if (res) {
+                db[id].msgs.push({ t: 'outgoing', x: txt }); renderMsg('outgoing', txt); addList(id, db[id].name); save();
+            } else alert('Ошибка');
         }
 
-        function goBack() {
-            document.body.classList.remove('view-chat');
-            currentChatId = null;
-        }
-
-        function renderMessage(type, text, scroll = true, senderName = null) {
-            const container = document.getElementById('messagesContainer');
-            const div = document.createElement('div');
-            div.className = `message ${type}`;
-            
-            if (senderName) {
-                const nameSpan = document.createElement('span');
-                nameSpan.className = 'sender-name';
-                nameSpan.innerText = senderName;
-                div.appendChild(nameSpan);
-            }
-            
-            div.appendChild(document.createTextNode(text));
-            container.appendChild(div);
-            if (scroll) container.scrollTop = container.scrollHeight;
-        }
-
-        async function sendMessage() {
-            const input = document.getElementById('messageInput');
-            const btn = document.getElementById('sendBtn');
-            const text = input.value.trim();
-            if (!text || !currentChatId) return;
-
-            const targetUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`;
-            const url = PROXY + targetUrl;
-
-            btn.disabled = true;
-            try {
-                const response = await fetch(url);
-                if (response.ok) {
-                    chatsData[currentChatId].messages.push({ type: 'outgoing', text });
-                    renderMessage('outgoing', text);
-                    addContactToList(currentChatId, chatsData[currentChatId].name);
-                    input.value = '';
-                    saveToStorage();
-                } else {
-                    alert('Ошибка отправки. Возможно, токен неверный.');
-                }
-            } catch (error) {
-                alert('Ошибка сети: ' + error.message);
-            } finally {
-                btn.disabled = false;
-            }
-        }
-
-        document.getElementById('statusLine').innerText = "Работает (через VPN)";
-        initData();
-        setInterval(checkNewMessages, 2000);
+        Object.keys(db).forEach(c => addList(c, db[c].name));
+        setInterval(loop, 2500);
     </script>
 </body>
 </html>
