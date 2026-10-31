@@ -38,7 +38,7 @@
         <div class="screen-contacts">
             <div class="header">Сообщения</div>
             <div class="contacts-list" id="contactsList"></div>
-            <div class="status-line" id="statusLine">Инициализация...</div>
+            <div class="status-line" id="statusLine">Подключение...</div>
         </div>
         <div class="screen-chat">
             <div class="chat-header">
@@ -54,11 +54,11 @@
     </div>
 
     <script>
-        // ВАШ СТАРЫЙ ТОКЕН
+        // ВАШ ТОКЕН
         const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
         
-        // Рабочий шлюз для API Telegram
-        const PROXY = 'https://tg.i-c-a.su/';
+        // Новый прокси, который не блокирует github.io
+        const PROXY = 'https://thingproxy.freeboard.io/fetch/';
 
         let currentChatId = null;
         let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId'), 10) || 0;
@@ -82,7 +82,7 @@
             polling = true;
             
             const targetUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
-            const url = PROXY + encodeURIComponent(targetUrl);
+            const url = PROXY + targetUrl; // thingproxy требует просто склейку URL
             
             try {
                 const response = await fetch(url);
@@ -184,7 +184,7 @@
             if (!text || !currentChatId) return;
 
             const targetUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`;
-            const url = PROXY + encodeURIComponent(targetUrl);
+            const url = PROXY + targetUrl;
 
             btn.disabled = true;
             try {
@@ -205,7 +205,7 @@
             }
         }
 
-        document.getElementById('statusLine').innerText = "Соединение...";
+        document.getElementById('statusLine').innerText = "Работает (через VPN)";
         initData();
         setInterval(checkNewMessages, 2000);
     </script>
