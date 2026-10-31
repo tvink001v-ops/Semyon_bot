@@ -3,42 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telegram Mobile</title>
+    <title>Telegram Бот</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body, html { height: 100%; overflow: hidden; background-color: #ffffff; }
         .app-container { display: flex; width: 200vw; height: 100%; transition: transform 0.25s ease-in-out; }
         .screen-contacts { width: 100vw; height: 100%; display: flex; flex-direction: column; background: white; }
-        .header { height: 60px; background: #507299; color: white; display: flex; align-items: center; padding: 0 20px; font-weight: bold; font-size: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .header { height: 60px; background: #507299; color: white; display: flex; align-items: center; padding: 0 20px; font-weight: bold; font-size: 18px; }
         .contacts-list { flex: 1; overflow-y: auto; }
         .contact-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid #f0f2f5; cursor: pointer; }
-        .contact-item:active { background-color: #f2f6fa; }
-        .avatar { width: 48px; height: 48px; background: #6c7a89; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; font-size: 16px; flex-shrink: 0; }
-        .contact-details { min-width: 0; }
-        .contact-details b { font-size: 16px; color: #000; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .contact-details p { font-size: 13px; color: #8a8a8a; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .screen-chat {
-            width: 100vw; height: 100%; display: flex; flex-direction: column;
-            background-color: #f4f4f5;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%23f4f4f5'/%3E%3Ccircle cx='20' cy='20' r='1' fill='%23e0e0e0'/%3E%3C/svg%3E");
-        }
+        .avatar { width: 48px; height: 48px; background: #6c7a89; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; font-size: 16px; }
+        .contact-details b { font-size: 16px; color: #000; }
+        .contact-details p { font-size: 13px; color: #8a8a8a; margin-top: 2px; }
+        .screen-chat { width: 100vw; height: 100%; display: flex; flex-direction: column; background-color: #f4f4f5; }
         .chat-header { height: 60px; background: white; border-bottom: 1px solid #dadde1; display: flex; align-items: center; padding: 0 10px; font-weight: bold; }
-        .back-btn { background: none; border: none; font-size: 24px; color: #507299; padding: 10px; margin-right: 5px; cursor: pointer; }
+        .back-btn { background: none; border: none; font-size: 24px; color: #507299; padding: 10px; cursor: pointer; }
         .messages-container { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-        .message { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; box-shadow: 0 1px 1px rgba(0,0,0,0.05); word-wrap: break-word; overflow-wrap: anywhere; }
+        .message { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; }
         .message.incoming { background: white; align-self: flex-start; border-top-left-radius: 4px; }
         .message.outgoing { background: #effdde; align-self: flex-end; border-top-right-radius: 4px; }
-        .input-area { background: white; padding: 10px 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #dadde1; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
+        .input-area { background: white; padding: 10px 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #dadde1; }
         .input-area input { flex: 1; padding: 12px 16px; border: 1px solid #dbdbdb; border-radius: 24px; outline: none; font-size: 15px; background: #f9f9f9; }
-        .input-area button { background: #4a90e2; color: white; border: none; padding: 10px 18px; border-radius: 24px; cursor: pointer; font-weight: bold; font-size: 15px; }
-        .input-area button:disabled { opacity: 0.5; cursor: default; }
+        .input-area button { background: #4a90e2; color: white; border: none; padding: 10px 18px; border-radius: 24px; cursor: pointer; font-weight: bold; }
         .view-chat .app-container { transform: translateX(-100vw); }
     </style>
 </head>
 <body>
     <div class="app-container">
         <div class="screen-contacts">
-            <div class="header">Telegram Бота</div>
+            <div class="header">Сообщения</div>
             <div class="contacts-list" id="contactsList"></div>
         </div>
         <div class="screen-chat">
@@ -49,22 +42,17 @@
             <div class="messages-container" id="messagesContainer"></div>
             <div class="input-area">
                 <input type="text" id="messageInput" placeholder="Сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
-                <button id="sendBtn" onclick="sendMessage()">Отп.</button>
+                <button onclick="sendMessage()">Отп.</button>
             </div>
         </div>
     </div>
 
     <script>
-        // ===== НАСТРОЙКИ =====
-        // Ваш старый токен (для теста)
-        const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
+        // ВАШ НОВЫЙ ТОКЕН (вставьте тот, который получили в BotFather)
+        const BOT_TOKEN = 'СЮДА_ВСТАВЬТЕ_НОВЫЙ_ТОКЕН';
         
-        // ВСТАВЬТЕ СЮДА URL ВАШЕГО CLOUDFLARE WORKER (без слэша на конце)
-        // Пример: 'https://telegram-proxy.vash-subdomain.workers.dev'
-        const WORKER_URL = 'ВСТАВЬТЕ_URL_ВАШЕГО_WORKER_СЮДА';
-
-        // ===== ДАЛЬШЕ НИЧЕГО МЕНЯТЬ НЕ НУЖНО =====
-        const API = WORKER_URL + '/bot' + BOT_TOKEN;
+        // Рабочий прокси для GitHub Pages
+        const PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
 
         let currentChatId = null;
         let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId'), 10) || 0;
@@ -83,10 +71,11 @@
         }
 
         async function checkNewMessages() {
-            if (polling || WORKER_URL.includes('ВСТАВЬТЕ')) return;
+            if (polling || BOT_TOKEN.includes('СЮДА_ВСТАВЬТЕ')) return;
             polling = true;
             
-            const url = `${API}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
+            const targetUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
+            const url = PROXY + encodeURIComponent(targetUrl);
             
             try {
                 const response = await fetch(url);
@@ -98,20 +87,19 @@
                         lastUpdateId = update.update_id;
                         if (update.message && update.message.text) {
                             const chatId = update.message.chat.id;
-                            const username = update.message.from.first_name || update.message.from.username || 'Пользователь';
+                            const username = update.message.from.first_name || 'Пользователь';
                             const text = update.message.text;
 
                             if (!chatsData[chatId]) chatsData[chatId] = { name: username, messages: [] };
                             chatsData[chatId].messages.push({ type: 'incoming', text });
                             addContactToList(chatId, username);
-
                             if (String(currentChatId) === String(chatId)) renderMessage('incoming', text);
                         }
                     });
                     saveToStorage();
                 }
             } catch (error) {
-                console.error('Ошибка сети:', error);
+                console.error('Ошибка:', error);
             } finally {
                 polling = false;
             }
@@ -119,23 +107,18 @@
 
         function addContactToList(chatId, username) {
             const list = document.getElementById('contactsList');
-            let item = document.querySelector(`[data-chat-id="${CSS.escape(String(chatId))}"]`);
+            let item = document.querySelector(`[data-chat-id="${chatId}"]`);
             const lastMsg = chatsData[chatId].messages[chatsData[chatId].messages.length - 1]?.text || '';
-            const preview = lastMsg.length > 30 ? lastMsg.substring(0, 30) + '...' : lastMsg;
-
+            
             if (!item) {
                 item = document.createElement('div');
                 item.className = 'contact-item';
-                item.setAttribute('data-chat-id', String(chatId));
+                item.setAttribute('data-chat-id', chatId);
                 list.insertBefore(item, list.firstChild);
             }
-
             item.innerHTML = `
                 <div class="avatar">${username.substring(0, 2).toUpperCase()}</div>
-                <div class="contact-details">
-                    <b>${username}</b>
-                    <p>${preview}</p>
-                </div>
+                <div class="contact-details"><b>${username}</b><p>${lastMsg.substring(0, 30)}</p></div>
             `;
             item.onclick = () => selectChat(chatId);
         }
@@ -146,8 +129,7 @@
             document.getElementById('currentChatName').innerText = chatsData[chatId].name;
             const container = document.getElementById('messagesContainer');
             container.innerHTML = '';
-            chatsData[chatId].messages.forEach(msg => renderMessage(msg.type, msg.text, false));
-            container.scrollTop = container.scrollHeight;
+            chatsData[chatId].messages.forEach(msg => renderMessage(msg.type, msg.text));
         }
 
         function goBack() {
@@ -155,29 +137,23 @@
             currentChatId = null;
         }
 
-        function renderMessage(type, text, scroll = true) {
+        function renderMessage(type, text) {
             const container = document.getElementById('messagesContainer');
             const div = document.createElement('div');
             div.className = `message ${type}`;
             div.innerText = text;
             container.appendChild(div);
-            if (scroll) container.scrollTop = container.scrollHeight;
+            container.scrollTop = container.scrollHeight;
         }
 
         async function sendMessage() {
             const input = document.getElementById('messageInput');
-            const btn = document.getElementById('sendBtn');
             const text = input.value.trim();
-            
-            if (!text || !currentChatId) return;
-            if (WORKER_URL.includes('ВСТАВЬТЕ')) {
-                alert('Сначала вставьте URL вашего Cloudflare Worker в код!');
-                return;
-            }
+            if (!text || !currentChatId || BOT_TOKEN.includes('СЮДА_ВСТАВЬТЕ')) return;
 
-            const url = `${API}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`;
+            const targetUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`;
+            const url = PROXY + encodeURIComponent(targetUrl);
 
-            btn.disabled = true;
             try {
                 const response = await fetch(url);
                 if (response.ok) {
@@ -186,13 +162,9 @@
                     addContactToList(currentChatId, chatsData[currentChatId].name);
                     input.value = '';
                     saveToStorage();
-                } else {
-                    alert('Ошибка отправки. Возможно, токен неверный.');
                 }
             } catch (error) {
-                alert('Ошибка сети: ' + error.message);
-            } finally {
-                btn.disabled = false;
+                alert('Ошибка отправки');
             }
         }
 
