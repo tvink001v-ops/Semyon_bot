@@ -3,39 +3,65 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Telegram Бот</title>
+    <title>Telegram Browser</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body, html { height: 100%; overflow: hidden; background-color: #ffffff; }
         .app-container { display: flex; width: 200vw; height: 100%; transition: transform 0.25s ease-in-out; }
+        
+        /* Экран 1: Список контактов */
         .screen-contacts { width: 100vw; height: 100%; display: flex; flex-direction: column; background: white; }
-        .header { height: 60px; background: #507299; color: white; display: flex; align-items: center; padding: 0 20px; font-weight: bold; font-size: 18px; }
+        .header { height: 60px; background: #507299; color: white; display: flex; align-items: center; padding: 0 20px; font-weight: bold; font-size: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .contacts-list { flex: 1; overflow-y: auto; }
         .contact-item { display: flex; align-items: center; padding: 15px 20px; border-bottom: 1px solid #f0f2f5; cursor: pointer; }
-        .avatar { width: 48px; height: 48px; background: #6c7a89; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; font-size: 16px; flex-shrink: 0;}
-        .contact-details { min-width: 0; }
-        .contact-details b { font-size: 16px; color: #000; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .contact-details p { font-size: 13px; color: #8a8a8a; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .screen-chat { width: 100vw; height: 100%; display: flex; flex-direction: column; background-color: #f4f4f5; }
+        .contact-item:active { background-color: #f2f6fa; }
+        .avatar { width: 48px; height: 48px; background: #6c7a89; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; margin-right: 15px; font-size: 16px; flex-shrink: 0; }
+        .contact-details b { font-size: 16px; color: #000; }
+        .contact-details p { font-size: 13px; color: #8a8a8a; margin-top: 2px; }
+        .status-line { font-size: 12px; color: #8a8a8a; padding: 10px 20px; text-align: center; }
+
+        /* Экран 2: Окно чата */
+        .screen-chat { width: 100vw; height: 100%; display: flex; flex-direction: column; background-color: #f4f4f5; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%23f4f4f5'/%3E%3Ccircle cx='20' cy='20' r='1' fill='%23e0e0e0'/%3E%3C/svg%3E"); }
         .chat-header { height: 60px; background: white; border-bottom: 1px solid #dadde1; display: flex; align-items: center; padding: 0 10px; font-weight: bold; }
-        .back-btn { background: none; border: none; font-size: 24px; color: #507299; padding: 10px; cursor: pointer; }
+        .back-btn { background: none; border: none; font-size: 24px; color: #507299; padding: 10px; margin-right: 5px; cursor: pointer; }
         .messages-container { flex: 1; padding: 15px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
-        .message { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; word-wrap: break-word; overflow-wrap: anywhere; }
+        .message { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; word-wrap: break-word; }
         .message.incoming { background: white; align-self: flex-start; border-top-left-radius: 4px; }
         .message.outgoing { background: #effdde; align-self: flex-end; border-top-right-radius: 4px; }
+        
+        /* Поле ввода */
         .input-area { background: white; padding: 10px 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #dadde1; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
         .input-area input { flex: 1; padding: 12px 16px; border: 1px solid #dbdbdb; border-radius: 24px; outline: none; font-size: 15px; background: #f9f9f9; }
-        .input-area button { background: #4a90e2; color: white; border: none; padding: 10px 18px; border-radius: 24px; cursor: pointer; font-weight: bold; }
+        .input-area button { background: #4a90e2; color: white; border: none; padding: 10px 18px; border-radius: 24px; cursor: pointer; font-weight: bold; font-size: 15px; }
         .input-area button:disabled { opacity: 0.5; }
+        
+        /* Переключатель */
         .view-chat .app-container { transform: translateX(-100vw); }
+        
+        /* Оверлей загрузки */
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; }
+        .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #507299; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
+
+    <div class="overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div id="loadingText">Подключение к Telegram...</div>
+    </div>
+
     <div class="app-container">
+        <!-- Список чатов -->
         <div class="screen-contacts">
-            <div class="header">Сообщения</div>
-            <div class="contacts-list" id="contactsList"></div>
+            <div class="header">Telegram Бот</div>
+            <div class="contacts-list" id="contactsList">
+                <!-- Сюда будут добавляться чаты -->
+            </div>
+            <div class="status-line" id="statusLine"></div>
         </div>
+
+        <!-- Чат -->
         <div class="screen-chat">
             <div class="chat-header">
                 <button class="back-btn" onclick="goBack()">←</button>
@@ -49,89 +75,119 @@
         </div>
     </div>
 
-    <script>
-        // ВАШ СТАРЫЙ ТОКЕН (потом замените на новый)
+    <script type="module">
+        // ВАШ СТАРЫЙ ТОКЕН
         const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
         
-        // Рабочий прокси
-        const PROXY = 'https://api.codetabs.com/v1/proxy?quest=';
+        // Бесплатный MTProto-прокси для РФ
+        const PROXY_CONFIG = {
+            ip: 'spb-ee.spiderservice.vip',
+            port: 443,
+            MTProxy: true,
+            secret: 'ee6434317afacc4e4505a2c5a79a75c5076164732e78352e7275'
+        };
 
+        import { Client } from "https://cdn.jsdelivr.net/npm/@mtkruto/browser/esm/mod.js";
+
+        const client = new Client({ proxy: PROXY_CONFIG });
         let currentChatId = null;
-        let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId'), 10) || 0;
-        let chatsData = JSON.parse(localStorage.getItem('chatsData')) || {};
-        let polling = false;
+        let myId = null;
+        const chatsData = {};
 
-        function saveToStorage() {
-            localStorage.setItem('chatsData', JSON.stringify(chatsData));
-            localStorage.setItem('lastUpdateId', String(lastUpdateId));
-        }
+        const updateStatus = (msg) => {
+            document.getElementById('statusLine').innerText = msg;
+        };
 
-        function initData() {
-            Object.keys(chatsData).forEach(chatId => {
-                addContactToList(chatId, chatsData[chatId].name);
-            });
-        }
-
-        async function checkNewMessages() {
-            if (polling) return;
-            polling = true;
-            
-            const targetUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
-            const url = PROXY + encodeURIComponent(targetUrl);
-            
+        // Инициализация
+        async function init() {
             try {
-                const response = await fetch(url);
-                if (!response.ok) return;
-                const data = await response.json();
+                await client.connect();
+                await client.loginAsBot(BOT_TOKEN);
+                
+                const me = await client.getMe();
+                myId = me.id;
+                
+                document.getElementById('loadingOverlay').style.display = 'none';
+                updateStatus('Подключено. Ожидание сообщений...');
 
-                if (Array.isArray(data.result) && data.result.length > 0) {
-                    data.result.forEach(update => {
-                        lastUpdateId = update.update_id;
-                        if (update.message && update.message.text) {
-                            const chatId = update.message.chat.id;
-                            const username = update.message.from.first_name || update.message.from.username || 'Пользователь';
-                            const text = update.message.text;
+                // Слушаем новые сообщения
+                client.on('message', (msg) => {
+                    handleIncomingMessage(msg);
+                });
 
-                            if (!chatsData[chatId]) chatsData[chatId] = { name: username, messages: [] };
-                            chatsData[chatId].messages.push({ type: 'incoming', text });
-                            addContactToList(chatId, username);
-                            if (String(currentChatId) === String(chatId)) renderMessage('incoming', text);
-                        }
-                    });
-                    saveToStorage();
-                }
-            } catch (error) {
-                console.error('Ошибка:', error);
-            } finally {
-                polling = false;
+            } catch (e) {
+                document.getElementById('loadingOverlay').innerHTML = `<div style="color: red; padding: 20px; text-align: center;">
+                    <b>Ошибка подключения!</b><br><br>
+                    ${e.message}<br><br>
+                    <small>Если ошибка 401, значит токен неверный или отозван.</small>
+                </div>`;
             }
         }
 
-        function addContactToList(chatId, username) {
+        // Обработка входящих
+        function handleIncomingMessage(msg) {
+            if (!msg.text) return;
+            
+            const chatId = msg.chat.id;
+            const username = msg.chat.firstName || msg.chat.username || 'Пользователь';
+            
+            // Пропускаем сообщения от самого бота, если они дублируются
+            if (msg.senderId === myId) return;
+
+            if (!chatsData[chatId]) {
+                chatsData[chatId] = { name: username, messages: [] };
+                addContactToList(chatId, username);
+            }
+
+            chatsData[chatId].messages.push({ type: 'incoming', text: msg.text });
+            updateLastMessage(chatId, msg.text);
+
+            if (currentChatId === chatId) {
+                renderMessage('incoming', msg.text);
+            }
+        }
+
+        // Добавление контакта в список
+        function addContactToList(chatId, name) {
             const list = document.getElementById('contactsList');
-            let item = document.querySelector(`[data-chat-id="${CSS.escape(String(chatId))}"]`);
-            const lastMsg = chatsData[chatId].messages[chatsData[chatId].messages.length - 1]?.text || '';
+            let item = document.querySelector(`[data-chat-id="${chatId}"]`);
             
             if (!item) {
                 item = document.createElement('div');
                 item.className = 'contact-item';
-                item.setAttribute('data-chat-id', String(chatId));
+                item.setAttribute('data-chat-id', chatId);
                 list.insertBefore(item, list.firstChild);
+                
+                item.innerHTML = `
+                    <div class="avatar">${name.substring(0, 2).toUpperCase()}</div>
+                    <div class="contact-details">
+                        <b>${name}</b>
+                        <p>Нет сообщений</p>
+                    </div>
+                `;
+                item.onclick = () => selectChat(chatId);
             }
-            item.innerHTML = `
-                <div class="avatar">${username.substring(0, 2).toUpperCase()}</div>
-                <div class="contact-details"><b>${username}</b><p>${lastMsg.substring(0, 30)}</p></div>
-            `;
-            item.onclick = () => selectChat(chatId);
         }
 
+        function updateLastMessage(chatId, text) {
+            const item = document.querySelector(`[data-chat-id="${chatId}"]`);
+            if (item) {
+                item.querySelector('p').innerText = text.length > 30 ? text.substring(0, 30) + '...' : text;
+            }
+        }
+
+        // Открытие чата
         function selectChat(chatId) {
             currentChatId = chatId;
             document.body.classList.add('view-chat');
             document.getElementById('currentChatName').innerText = chatsData[chatId].name;
+            
             const container = document.getElementById('messagesContainer');
             container.innerHTML = '';
-            chatsData[chatId].messages.forEach(msg => renderMessage(msg.type, msg.text));
+            
+            chatsData[chatId].messages.forEach(msg => {
+                renderMessage(msg.type, msg.text, false);
+            });
             container.scrollTop = container.scrollHeight;
         }
 
@@ -140,45 +196,47 @@
             currentChatId = null;
         }
 
-        function renderMessage(type, text) {
+        // Отрисовка сообщения
+        function renderMessage(type, text, scroll = true) {
             const container = document.getElementById('messagesContainer');
             const div = document.createElement('div');
             div.className = `message ${type}`;
             div.innerText = text;
             container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
+            if (scroll) container.scrollTop = container.scrollHeight;
         }
 
+        // Отправка сообщения
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const btn = document.getElementById('sendBtn');
             const text = input.value.trim();
+            
             if (!text || !currentChatId) return;
-
-            const targetUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`;
-            const url = PROXY + encodeURIComponent(targetUrl);
 
             btn.disabled = true;
             try {
-                const response = await fetch(url);
-                if (response.ok) {
-                    chatsData[currentChatId].messages.push({ type: 'outgoing', text });
-                    renderMessage('outgoing', text);
-                    addContactToList(currentChatId, chatsData[currentChatId].name);
-                    input.value = '';
-                    saveToStorage();
-                } else {
-                    alert('Ошибка отправки (возможно, токен отозван).');
-                }
-            } catch (error) {
-                alert('Ошибка сети.');
+                // Используем метод MTKruto для отправки
+                await client.sendMessage(currentChatId, { text: text });
+                
+                chatsData[currentChatId].messages.push({ type: 'outgoing', text });
+                renderMessage('outgoing', text);
+                updateLastMessage(currentChatId, text);
+                input.value = '';
+                
+            } catch (e) {
+                alert('Ошибка отправки: ' + e.message);
             } finally {
                 btn.disabled = false;
             }
         }
 
-        initData();
-        setInterval(checkNewMessages, 2000);
+        // Запуск
+        init();
+        
+        // Делаем функции глобальными для HTML-кнопок
+        window.goBack = goBack;
+        window.sendMessage = sendMessage;
     </script>
 </body>
 </html>
