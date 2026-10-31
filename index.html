@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Панель с сохранением</title>
+    <title>Telegram Панель (Через Прокси)</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { display: flex; height: 100vh; background-color: #e7ebf0; }
@@ -29,7 +29,7 @@
 <body>
 
     <div class="sidebar">
-        <div class="sidebar-header">Контакты Бота (Сохраненные)</div>
+        <div class="sidebar-header">Контакты Бота (Proxy Mode)</div>
         <div class="contacts-list" id="contactsList"></div>
     </div>
 
@@ -47,30 +47,28 @@
 
     <script>
         const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
+        
+        // Используем рабочий прокси-домен вместо api.telegram.org
+        const API_BASE = 'https://telegram-proxy.org'; 
+        
         let currentChatId = null;
-        
-        // Загружаем сохраненный ID последнего обновления (или 0)
         let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId')) || 0; 
-        
-        // Загружаем сохраненную базу данных чатов (или создаем пустую)
         const chatsData = JSON.parse(localStorage.getItem('chatsData')) || {}; 
 
-        // При запуске страницы сразу восстанавливаем контакты из памяти
         function initData() {
             Object.keys(chatsData).forEach(chatId => {
                 addContactToList(chatId, chatsData[chatId].name, false);
             });
         }
 
-        // Сохранение состояния в localStorage
         function saveToStorage() {
             localStorage.setItem('chatsData', JSON.stringify(chatsData));
             localStorage.setItem('lastUpdateId', lastUpdateId);
         }
 
-        // Автоматический опрос Telegram API
+        // Автоматический опрос Telegram через прокси
         async function checkNewMessages() {
-            const url = `https://telegram.org{BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
+            const url = `${API_BASE}/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
             
             try {
                 const response = await fetch(url);
@@ -99,14 +97,13 @@
                             }
                         }
                     });
-                    saveToStorage(); // Сохраняем изменения в память браузера
+                    saveToStorage(); 
                 }
             } catch (error) {
-                console.error("Ошибка опроса Telegram API:", error);
+                console.error("Ошибка опроса через Прокси:", error);
             }
         }
 
-        // Добавление кнопки контакта на панель
         function addContactToList(chatId, username, isNew = true) {
             const list = document.getElementById('contactsList');
             if (document.querySelector(`[data-chat-id="${chatId}"]`)) return;
@@ -122,11 +119,9 @@
             item.onclick = () => selectChat(chatId);
             list.appendChild(item);
 
-            // Если загрузился новый контакт во время работы, и чат не выбран — открываем его
             if (isNew && !currentChatId) selectChat(chatId);
         }
 
-        // Открытие конкретного чата
         function selectChat(chatId) {
             currentChatId = chatId;
             document.querySelectorAll('.contact-item').forEach(i => i.classList.remove('active'));
@@ -141,7 +136,6 @@
             chatsData[chatId].messages.forEach(msg => renderMessage(msg.type, msg.text));
         }
 
-        // Отрисовка сообщения
         function renderMessage(type, text) {
             const container = document.getElementById('messagesContainer');
             const div = document.createElement('div');
@@ -151,13 +145,13 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        // Отправка ответа
+        // Отправка ответа через прокси
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
             if (!text || !currentChatId) return;
 
-            const url = `https://telegram.org{BOT_TOKEN}/sendMessage`;
+            const url = `${API_BASE}/bot${BOT_TOKEN}/sendMessage`;
 
             try {
                 const response = await fetch(url, {
@@ -170,7 +164,7 @@
                     chatsData[currentChatId].messages.push({ type: 'outgoing', text });
                     renderMessage('outgoing', text);
                     input.value = '';
-                    saveToStorage(); // Сохраняем отправленное сообщение в память
+                    saveToStorage(); 
                 } else {
                     alert('Не удалось отправить сообщение.');
                 }
@@ -179,17 +173,16 @@
             }
         }
 
-        // Полная очистка локальной памяти (если нужно начать с нуля)
         function clearAllData() {
-            if (confirm("Вы уверены, что хотите удалить все сохраненные контакты и переписку?")) {
+            if (confirm("Вы уверены, что хотите удалить все сохраненные контакты?")) {
                 localStorage.clear();
                 location.reload();
             }
         }
 
-        // Запуск логики
+        // Запуск
         initData();
-        setInterval(checkNewMessages, 2000);
+        setInterval(checkNewMessages, 2000); // Проверка раз в 2 секунды
     </script>
 </body>
 </html>
