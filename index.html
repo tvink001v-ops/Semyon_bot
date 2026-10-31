@@ -8,8 +8,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body, html { height: 100%; overflow: hidden; background-color: #ffffff; }
         .app-container { display: flex; width: 200vw; height: 100%; transition: transform 0.25s ease-in-out; }
-
-        /* Экран 1: Список контактов */
         .screen-contacts { width: 100vw; height: 100%; display: flex; flex-direction: column; background: white; }
         .header { height: 60px; background: #507299; color: white; display: flex; align-items: center; padding: 0 20px; font-weight: bold; font-size: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .contacts-list { flex: 1; overflow-y: auto; }
@@ -19,13 +17,8 @@
         .contact-details { min-width: 0; }
         .contact-details b { font-size: 16px; color: #000; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .contact-details p { font-size: 13px; color: #8a8a8a; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-        /* Экран 2: Окно чата */
         .screen-chat {
-            width: 100vw;
-            height: 100%;
-            display: flex;
-            flex-direction: column;
+            width: 100vw; height: 100%; display: flex; flex-direction: column;
             background-color: #f4f4f5;
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%23f4f4f5'/%3E%3Ccircle cx='20' cy='20' r='1' fill='%23e0e0e0'/%3E%3C/svg%3E");
         }
@@ -35,28 +28,19 @@
         .message { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; box-shadow: 0 1px 1px rgba(0,0,0,0.05); word-wrap: break-word; overflow-wrap: anywhere; }
         .message.incoming { background: white; align-self: flex-start; border-top-left-radius: 4px; }
         .message.outgoing { background: #effdde; align-self: flex-end; border-top-right-radius: 4px; }
-        .status-line { font-size: 12px; color: #8a8a8a; text-align: center; padding: 4px; }
-
-        /* Поле ввода сообщения */
         .input-area { background: white; padding: 10px 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #dadde1; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
         .input-area input { flex: 1; padding: 12px 16px; border: 1px solid #dbdbdb; border-radius: 24px; outline: none; font-size: 15px; background: #f9f9f9; }
         .input-area button { background: #4a90e2; color: white; border: none; padding: 10px 18px; border-radius: 24px; cursor: pointer; font-weight: bold; font-size: 15px; }
         .input-area button:disabled { opacity: 0.5; cursor: default; }
-
-        /* Переключатель экранов */
         .view-chat .app-container { transform: translateX(-100vw); }
     </style>
 </head>
 <body>
-
     <div class="app-container">
-        <!-- ЭКРАН 1: Контакты -->
         <div class="screen-contacts">
             <div class="header">Telegram Бота</div>
             <div class="contacts-list" id="contactsList"></div>
         </div>
-
-        <!-- ЭКРАН 2: Чат -->
         <div class="screen-chat">
             <div class="chat-header">
                 <button class="back-btn" onclick="goBack()">←</button>
@@ -71,16 +55,12 @@
     </div>
 
     <script>
-        // ===== НАСТРОЙКИ =====
-        // 1. Вставьте НОВЫЙ токен (старый засветился — перевыпустите через @BotFather → /revoke)
-        const BOT_TOKEN = 'ВСТАВЬТЕ_НОВЫЙ_ТОКЕН_СЮДА';
-
-        // 2. Вставьте URL вашего Cloudflare Worker (без слэша на конце)
-        //    Пример: 'https://telegram-proxy.vash-subdomen.workers.dev'
-        const WORKER_URL = 'ВСТАВЬТЕ_URL_ВАШЕГО_WORKER_СЮДА';
-
-        // ===== ДАЛЬШЕ НИЧЕГО МЕНЯТЬ НЕ НУЖНО =====
-        const API = WORKER_URL + '/bot' + BOT_TOKEN;
+        // ==========================================
+        // ВСТАВЬТЕ СЮДА ВАШ НОВЫЙ ТОКЕН
+        // ==========================================
+        const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY'; 
+        
+        const PROXY = 'https://corsproxy.io/?';
 
         let currentChatId = null;
         let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId'), 10) || 0;
@@ -99,38 +79,30 @@
         }
 
         async function checkNewMessages() {
-            if (polling) return;
+            if (polling || BOT_TOKEN.includes('9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY')) return;
             polling = true;
-            const url = `${API}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
+            
+            const targetUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
+            const url = PROXY + encodeURIComponent(targetUrl);
+            
             try {
                 const response = await fetch(url);
-                if (!response.ok) {
-                    console.warn('Telegram API HTTP', response.status);
-                    return;
-                }
+                if (!response.ok) return;
                 const data = await response.json();
 
                 if (Array.isArray(data.result) && data.result.length > 0) {
                     data.result.forEach(update => {
                         lastUpdateId = update.update_id;
-
                         if (update.message && update.message.text) {
                             const chatId = update.message.chat.id;
-                            const username = update.message.from.first_name
-                                || update.message.from.username
-                                || 'Пользователь';
+                            const username = update.message.from.first_name || update.message.from.username || 'Пользователь';
                             const text = update.message.text;
 
-                            if (!chatsData[chatId]) {
-                                chatsData[chatId] = { name: username, messages: [] };
-                            }
-
+                            if (!chatsData[chatId]) chatsData[chatId] = { name: username, messages: [] };
                             chatsData[chatId].messages.push({ type: 'incoming', text });
                             addContactToList(chatId, username);
 
-                            if (String(currentChatId) === String(chatId)) {
-                                renderMessage('incoming', text);
-                            }
+                            if (String(currentChatId) === String(chatId)) renderMessage('incoming', text);
                         }
                     });
                     saveToStorage();
@@ -145,7 +117,6 @@
         function addContactToList(chatId, username) {
             const list = document.getElementById('contactsList');
             let item = document.querySelector(`[data-chat-id="${CSS.escape(String(chatId))}"]`);
-
             const lastMsg = chatsData[chatId].messages[chatsData[chatId].messages.length - 1]?.text || '';
             const preview = lastMsg.length > 30 ? lastMsg.substring(0, 30) + '...' : lastMsg;
 
@@ -163,7 +134,6 @@
                     <p>${preview}</p>
                 </div>
             `;
-
             item.onclick = () => selectChat(chatId);
         }
 
@@ -171,7 +141,6 @@
             currentChatId = chatId;
             document.body.classList.add('view-chat');
             document.getElementById('currentChatName').innerText = chatsData[chatId].name;
-
             const container = document.getElementById('messagesContainer');
             container.innerHTML = '';
             chatsData[chatId].messages.forEach(msg => renderMessage(msg.type, msg.text, false));
@@ -196,9 +165,15 @@
             const input = document.getElementById('messageInput');
             const btn = document.getElementById('sendBtn');
             const text = input.value.trim();
+            
             if (!text || !currentChatId) return;
+            if (BOT_TOKEN.includes('СЮДА_ВСТАВЬТЕ')) {
+                alert('Вы не вставили токен в код!');
+                return;
+            }
 
-            const url = `${API}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`;
+            const targetUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`;
+            const url = PROXY + encodeURIComponent(targetUrl);
 
             btn.disabled = true;
             try {
@@ -210,20 +185,13 @@
                     input.value = '';
                     saveToStorage();
                 } else {
-                    const errText = await response.text().catch(() => '');
-                    alert('Не удалось отправить. Ответ сервера: ' + response.status + ' ' + errText.slice(0, 200));
+                    alert('Ошибка отправки. Возможно, неверный токен.');
                 }
             } catch (error) {
                 alert('Ошибка сети: ' + error.message);
             } finally {
                 btn.disabled = false;
             }
-        }
-
-        // Проверка конфигурации
-        if (BOT_TOKEN.includes('ВСТАВЬТЕ') || WORKER_URL.includes('ВСТАВЬТЕ')) {
-            console.error('Заполните BOT_TOKEN и WORKER_URL в блоке НАСТРОЙКИ.');
-            alert('Внимание: не заполнены BOT_TOKEN и/или WORKER_URL. Смотрите блок НАСТРОЙКИ в коде.');
         }
 
         initData();
