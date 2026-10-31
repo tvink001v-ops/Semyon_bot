@@ -54,16 +54,17 @@
     </div>
 
     <script>
-        // ВАШ ТОКЕН
+        // ВАШ СТАРЫЙ ТОКЕН
         const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
-        // Используем публичный прокси для обхода CORS
-        const PROXY = 'https://corsproxy.io/?';
+        
+        // Рабочий шлюз для API Telegram
+        const PROXY = 'https://tg.i-c-a.su/';
 
         let currentChatId = null;
         let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId'), 10) || 0;
         let chatsData = JSON.parse(localStorage.getItem('chatsData')) || {};
         let polling = false;
-        const myId = 9056510066; // ID бота (из токена)
+        const myId = 9056510066;
 
         function saveToStorage() {
             localStorage.setItem('chatsData', JSON.stringify(chatsData));
@@ -93,15 +94,11 @@
                         lastUpdateId = update.update_id;
                         if (update.message && update.message.text) {
                             const chatId = update.message.chat.id;
-                            
-                            // Пропускаем сообщения от самого бота
                             if (update.message.from.id === myId) return;
 
                             const isGroup = update.message.chat.type === 'group' || update.message.chat.type === 'supergroup';
                             const chatName = isGroup ? (update.message.chat.title || 'Группа') : (update.message.from.first_name || 'Пользователь');
                             const text = update.message.text;
-                            
-                            // Имя отправителя в группе
                             const senderName = isGroup ? (update.message.from.first_name || update.message.from.username || 'Участник') : null;
 
                             if (!chatsData[chatId]) {
@@ -208,6 +205,7 @@
             }
         }
 
+        document.getElementById('statusLine').innerText = "Соединение...";
         initData();
         setInterval(checkNewMessages, 2000);
     </script>
