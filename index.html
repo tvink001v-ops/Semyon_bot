@@ -8,8 +8,6 @@
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body, html { height: 100%; overflow: hidden; background-color: #ffffff; }
         .app-container { display: flex; width: 200vw; height: 100%; transition: transform 0.25s ease-in-out; }
-        
-        /* Экран 1: Список контактов */
         .screen-contacts { width: 100vw; height: 100%; display: flex; flex-direction: column; background: white; }
         .header { height: 60px; background: #507299; color: white; display: flex; align-items: center; padding: 0 20px; font-weight: bold; font-size: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
         .contacts-list { flex: 1; overflow-y: auto; }
@@ -19,8 +17,6 @@
         .contact-details b { font-size: 16px; color: #000; }
         .contact-details p { font-size: 13px; color: #8a8a8a; margin-top: 2px; }
         .status-line { font-size: 12px; color: #8a8a8a; padding: 10px 20px; text-align: center; }
-
-        /* Экран 2: Окно чата */
         .screen-chat { width: 100vw; height: 100%; display: flex; flex-direction: column; background-color: #f4f4f5; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Crect width='40' height='40' fill='%23f4f4f5'/%3E%3Ccircle cx='20' cy='20' r='1' fill='%23e0e0e0'/%3E%3C/svg%3E"); }
         .chat-header { height: 60px; background: white; border-bottom: 1px solid #dadde1; display: flex; align-items: center; padding: 0 10px; font-weight: bold; }
         .back-btn { background: none; border: none; font-size: 24px; color: #507299; padding: 10px; margin-right: 5px; cursor: pointer; }
@@ -28,40 +24,27 @@
         .message { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; word-wrap: break-word; }
         .message.incoming { background: white; align-self: flex-start; border-top-left-radius: 4px; }
         .message.outgoing { background: #effdde; align-self: flex-end; border-top-right-radius: 4px; }
-        
-        /* Поле ввода */
         .input-area { background: white; padding: 10px 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #dadde1; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
         .input-area input { flex: 1; padding: 12px 16px; border: 1px solid #dbdbdb; border-radius: 24px; outline: none; font-size: 15px; background: #f9f9f9; }
         .input-area button { background: #4a90e2; color: white; border: none; padding: 10px 18px; border-radius: 24px; cursor: pointer; font-weight: bold; font-size: 15px; }
         .input-area button:disabled { opacity: 0.5; }
-        
-        /* Переключатель */
         .view-chat .app-container { transform: translateX(-100vw); }
-        
-        /* Оверлей загрузки */
-        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.9); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; }
+        .overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.95); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; }
         .spinner { border: 4px solid #f3f3f3; border-top: 4px solid #507299; border-radius: 50%; width: 40px; height: 40px; animation: spin 1s linear infinite; margin-bottom: 15px; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-
     <div class="overlay" id="loadingOverlay">
         <div class="spinner"></div>
-        <div id="loadingText">Подключение к Telegram...</div>
+        <div id="loadingText">Поиск рабочего прокси...</div>
     </div>
-
     <div class="app-container">
-        <!-- Список чатов -->
         <div class="screen-contacts">
             <div class="header">Telegram Бот</div>
-            <div class="contacts-list" id="contactsList">
-                <!-- Сюда будут добавляться чаты -->
-            </div>
+            <div class="contacts-list" id="contactsList"></div>
             <div class="status-line" id="statusLine"></div>
         </div>
-
-        <!-- Чат -->
         <div class="screen-chat">
             <div class="chat-header">
                 <button class="back-btn" onclick="goBack()">←</button>
@@ -74,97 +57,114 @@
             </div>
         </div>
     </div>
-
     <script type="module">
         // ВАШ СТАРЫЙ ТОКЕН
         const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
         
-        // Бесплатный MTProto-прокси для РФ
-        const PROXY_CONFIG = {
-            ip: 'spb-ee.spiderservice.vip',
-            port: 443,
-            MTProxy: true,
-            secret: 'ee6434317afacc4e4505a2c5a79a75c5076164732e78352e7275'
-        };
+        // СПИСОК ПРОКСИ (обновлено ~октябрь 2026)
+        const PROXIES = [
+            { ip: 'spb-ee.spiderservice.vip', port: 443, secret: 'ee6434317afacc4e4505a2c5a79a75c5076164732e78352e7275' },
+            { ip: 'ui.geodns.info', port: 4455, secret: 'ee79e344818749bd7ac519130220c25d09' },
+            { ip: '178.104.36.158', port: 443, secret: 'ee5f7ce28a2c4816c6c923dfd4d5630e01' },
+            { ip: 'redflag.yazaebalsyadelatproxy.co.uk', port: 443, secret: 'ee69e899d89ec68e220ca177557322b27f726564666c61672e79617a616562616c73796164656c617470726f78792e6363' },
+            { ip: '49.12.217.239', port: 8443, secret: 'ee1603010200010001fc030486e24c3add' }
+        ];
 
         import { Client } from "https://cdn.jsdelivr.net/npm/@mtkruto/browser/esm/mod.js";
 
-        const client = new Client({ proxy: PROXY_CONFIG });
+        let client = null;
         let currentChatId = null;
         let myId = null;
         const chatsData = {};
 
-        const updateStatus = (msg) => {
-            document.getElementById('statusLine').innerText = msg;
+        const log = (msg) => {
+            console.log(msg);
+            const el = document.getElementById('loadingText');
+            if (el) el.innerText = msg;
         };
 
-        // Инициализация
-        async function init() {
-            try {
-                await client.connect();
-                await client.loginAsBot(BOT_TOKEN);
-                
-                const me = await client.getMe();
-                myId = me.id;
-                
-                document.getElementById('loadingOverlay').style.display = 'none';
-                updateStatus('Подключено. Ожидание сообщений...');
-
-                // Слушаем новые сообщения
-                client.on('message', (msg) => {
-                    handleIncomingMessage(msg);
-                });
-
-            } catch (e) {
-                document.getElementById('loadingOverlay').innerHTML = `<div style="color: red; padding: 20px; text-align: center;">
-                    <b>Ошибка подключения!</b><br><br>
-                    ${e.message}<br><br>
-                    <small>Если ошибка 401, значит токен неверный или отозван.</small>
-                </div>`;
+        async function tryConnect() {
+            if (BOT_TOKEN.includes('9056510066')) {
+                // Токен вставлен, но он может быть старым. Продолжаем.
             }
+
+            for (let i = 0; i < PROXIES.length; i++) {
+                const proxy = PROXIES[i];
+                log(`Попытка ${i + 1}/${PROXIES.length}: ${proxy.ip}...`);
+                
+                try {
+                    const testClient = new Client({
+                        proxy: {
+                            ip: proxy.ip,
+                            port: proxy.port,
+                            MTProxy: true,
+                            secret: proxy.secret
+                        }
+                    });
+
+                    // Таймаут на подключение (10 секунд)
+                    const connectPromise = testClient.connect();
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Timeout')), 10000)
+                    );
+
+                    await Promise.race([connectPromise, timeoutPromise]);
+                    
+                    // Если дошли сюда, значит подключение установлено
+                    log('Прокси ответил! Проверка токена...');
+                    
+                    await testClient.loginAsBot(BOT_TOKEN);
+                    
+                    // Если логин прошел, сохраняем клиент
+                    client = testClient;
+                    const me = await client.getMe();
+                    myId = me.id;
+                    
+                    document.getElementById('loadingOverlay').style.display = 'none';
+                    document.getElementById('statusLine').innerText = `Подключено через ${proxy.ip}`;
+                    
+                    // Слушаем сообщения
+                    client.on('message', (msg) => handleIncomingMessage(msg));
+                    
+                    return; // Успех, выходим
+
+                } catch (e) {
+                    console.warn(`Прокси ${proxy.ip} не сработал:`, e.message);
+                    // Продолжаем цикл, пробуем следующий
+                }
+            }
+
+            // Если все прокси провалились
+            document.getElementById('loadingOverlay').innerHTML = `<div style="color: red; padding: 20px; text-align: center;">
+                <b>Не удалось подключиться</b><br><br>
+                Все прокси в списке недоступны.<br>
+                Попробуйте открыть страницу позже.
+            </div>`;
         }
 
-        // Обработка входящих
         function handleIncomingMessage(msg) {
-            if (!msg.text) return;
-            
+            if (!msg.text || msg.senderId === myId) return;
             const chatId = msg.chat.id;
             const username = msg.chat.firstName || msg.chat.username || 'Пользователь';
             
-            // Пропускаем сообщения от самого бота, если они дублируются
-            if (msg.senderId === myId) return;
-
             if (!chatsData[chatId]) {
                 chatsData[chatId] = { name: username, messages: [] };
                 addContactToList(chatId, username);
             }
-
             chatsData[chatId].messages.push({ type: 'incoming', text: msg.text });
             updateLastMessage(chatId, msg.text);
-
-            if (currentChatId === chatId) {
-                renderMessage('incoming', msg.text);
-            }
+            if (currentChatId === chatId) renderMessage('incoming', msg.text);
         }
 
-        // Добавление контакта в список
         function addContactToList(chatId, name) {
             const list = document.getElementById('contactsList');
             let item = document.querySelector(`[data-chat-id="${chatId}"]`);
-            
             if (!item) {
                 item = document.createElement('div');
                 item.className = 'contact-item';
                 item.setAttribute('data-chat-id', chatId);
                 list.insertBefore(item, list.firstChild);
-                
-                item.innerHTML = `
-                    <div class="avatar">${name.substring(0, 2).toUpperCase()}</div>
-                    <div class="contact-details">
-                        <b>${name}</b>
-                        <p>Нет сообщений</p>
-                    </div>
-                `;
+                item.innerHTML = `<div class="avatar">${name.substring(0, 2).toUpperCase()}</div><div class="contact-details"><b>${name}</b><p>Нет сообщений</p></div>`;
                 item.onclick = () => selectChat(chatId);
             }
         }
@@ -176,18 +176,13 @@
             }
         }
 
-        // Открытие чата
         function selectChat(chatId) {
             currentChatId = chatId;
             document.body.classList.add('view-chat');
             document.getElementById('currentChatName').innerText = chatsData[chatId].name;
-            
             const container = document.getElementById('messagesContainer');
             container.innerHTML = '';
-            
-            chatsData[chatId].messages.forEach(msg => {
-                renderMessage(msg.type, msg.text, false);
-            });
+            chatsData[chatId].messages.forEach(msg => renderMessage(msg.type, msg.text, false));
             container.scrollTop = container.scrollHeight;
         }
 
@@ -196,7 +191,6 @@
             currentChatId = null;
         }
 
-        // Отрисовка сообщения
         function renderMessage(type, text, scroll = true) {
             const container = document.getElementById('messagesContainer');
             const div = document.createElement('div');
@@ -206,24 +200,19 @@
             if (scroll) container.scrollTop = container.scrollHeight;
         }
 
-        // Отправка сообщения
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const btn = document.getElementById('sendBtn');
             const text = input.value.trim();
-            
-            if (!text || !currentChatId) return;
+            if (!text || !currentChatId || !client) return;
 
             btn.disabled = true;
             try {
-                // Используем метод MTKruto для отправки
                 await client.sendMessage(currentChatId, { text: text });
-                
                 chatsData[currentChatId].messages.push({ type: 'outgoing', text });
                 renderMessage('outgoing', text);
                 updateLastMessage(currentChatId, text);
                 input.value = '';
-                
             } catch (e) {
                 alert('Ошибка отправки: ' + e.message);
             } finally {
@@ -232,9 +221,7 @@
         }
 
         // Запуск
-        init();
-        
-        // Делаем функции глобальными для HTML-кнопок
+        tryConnect();
         window.goBack = goBack;
         window.sendMessage = sendMessage;
     </script>
