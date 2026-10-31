@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Telegram Панель с сохранением</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+        body { display: flex; height: 100vh; background-color: #e7ebf0; }
+        .sidebar { width: 350px; background: white; border-right: 1px solid #dadde1; display: flex; flex-direction: column; }
+        .sidebar-header { padding: 20px; background: #507299; color: white; font-weight: bold; text-align: center; }
+        .contacts-list { flex: 1; overflow-y: auto; }
+        .contact-item { display: flex; align-items: center; padding: 15px; cursor: pointer; border-bottom: 1px solid #f0f2f5; transition: 0.2s; }
+        .contact-item:hover { background: #f2f6fa; }
+        .contact-item.active { background: #4a90e2; color: white; }
+        .contact-avatar { width: 40px; height: 40px; background: #6c7a89; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 15px; font-weight: bold; }
+        .chat-area { flex: 1; display: flex; flex-direction: column; background: #f4f4f5; }
+        .chat-header { background: white; padding: 15px 20px; border-bottom: 1px solid #dadde1; font-weight: bold; display: flex; justify-content: space-between; align-items: center; }
+        .messages-container { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 60%; padding: 10px; border-radius: 12px; font-size: 15px; }
+        .message.incoming { background: white; align-self: flex-start; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .message.outgoing { background: #effdde; align-self: flex-end; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .input-area { background: white; padding: 15px; display: flex; gap: 10px; border-top: 1px solid #dadde1; }
+        .input-area input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 20px; outline: none; }
+        .input-area button { background: #4a90e2; color: white; border: none; padding: 10px 20px; border-radius: 20px; cursor: pointer; font-weight: bold; }
+        .clear-btn { background: #d9534f; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="sidebar-header">Контакты Бота (Сохраненные)</div>
+        <div class="contacts-list" id="contactsList"></div>
+    </div>
+
+    <div class="chat-area">
+        <div class="chat-header">
+            <span id="currentChatName">Ожидание сообщений... Напишите боту в Telegram</span>
+            <button class="clear-btn" onclick="clearAllData()">Очистить память</button>
+        </div>
+        <div class="messages-container" id="messagesContainer"></div>
+        <div class="input-area">
+            <input type="text" id="messageInput" placeholder="Напишите ответ от имени бота..." onkeydown="if(event.key === 'Enter') sendMessage()">
+            <button onclick="sendMessage()">Отправить</button>
+        </div>
+    </div>
+
+    <script>
+        const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
+        let currentChatId = null;
+        
+        // Загружаем сохраненный ID последнего обновления (или 0)
+        let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId')) || 0; 
+        
+        // Загружаем сохраненную базу данных чатов (или создаем пустую)
+        const chatsData = JSON.parse(localStorage.getItem('chatsData')) || {}; 
+
+        // При запуске страницы сразу восстанавливаем контакты из памяти
+        function initData() {
+            Object.keys(chatsData).forEach(chatId => {
+                addContactToList(chatId, chatsData[chatId].name, false);
+            });
+        }
+
+        // Сохранение состояния в localStorage
+        function saveToStorage() {
+            localStorage.setItem('chatsData', JSON.stringify(chatsData));
+            localStorage.setItem('lastUpdateId', lastUpdateId);
+        }
+
+        // Автоматический опрос Telegram API
+        async function checkNewMessages() {
+            const url = `https://telegram.org{BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) return;
+                
+                const data = await response.json();
+                
+                if (data.result && data.result.length > 0) {
+                    data.result.forEach(update => {
+                        lastUpdateId = update.update_id;
+
+                        if (update.message && update.message.text) {
+                            const chatId = update.message.chat.id;
+                            const username = update.message.from.first_name || update.message.from.username || "Пользователь";
+                            const text = update.message.text;
+
+                            if (!chatsData[chatId]) {
+                                chatsData[chatId] = { name: username, messages: [] };
+                                addContactToList(chatId, username, true);
+                            }
+
+                            chatsData[chatId].messages.push({ type: 'incoming', text });
+
+                            if (currentChatId == chatId) {
+                                renderMessage('incoming', text);
+                            }
+                        }
+                    });
+                    saveToStorage(); // Сохраняем изменения в память браузера
+                }
+            } catch (error) {
+                console.error("Ошибка опроса Telegram API:", error);
+            }
+        }
+
+        // Добавление кнопки контакта на панель
+        function addContactToList(chatId, username, isNew = true) {
+            const list = document.getElementById('contactsList');
+            if (document.querySelector(`[data-chat-id="${chatId}"]`)) return;
+
+            const item = document.createElement('div');
+            item.className = 'contact-item';
+            item.setAttribute('data-chat-id', chatId);
+            item.innerHTML = `
+                <div class="contact-avatar">${username.substring(0,2).toUpperCase()}</div>
+                <div><b>${username}</b><br><small>ID: ${chatId}</small></div>
+            `;
+            
+            item.onclick = () => selectChat(chatId);
+            list.appendChild(item);
+
+            // Если загрузился новый контакт во время работы, и чат не выбран — открываем его
+            if (isNew && !currentChatId) selectChat(chatId);
+        }
+
+        // Открытие конкретного чата
+        function selectChat(chatId) {
+            currentChatId = chatId;
+            document.querySelectorAll('.contact-item').forEach(i => i.classList.remove('active'));
+            
+            const activeItem = document.querySelector(`[data-chat-id="${chatId}"]`);
+            if (activeItem) activeItem.classList.add('active');
+            
+            document.getElementById('currentChatName').innerText = `Чат с: ${chatsData[chatId].name}`;
+            
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = '';
+            chatsData[chatId].messages.forEach(msg => renderMessage(msg.type, msg.text));
+        }
+
+        // Отрисовка сообщения
+        function renderMessage(type, text) {
+            const container = document.getElementById('messagesContainer');
+            const div = document.createElement('div');
+            div.className = `message ${type}`;
+            div.innerText = text;
+            container.appendChild(div);
+            container.scrollTop = container.scrollHeight;
+        }
+
+        // Отправка ответа
+        async function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if (!text || !currentChatId) return;
+
+            const url = `https://telegram.org{BOT_TOKEN}/sendMessage`;
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ chat_id: currentChatId, text: text })
+                });
+
+                if (response.ok) {
+                    chatsData[currentChatId].messages.push({ type: 'outgoing', text });
+                    renderMessage('outgoing', text);
+                    input.value = '';
+                    saveToStorage(); // Сохраняем отправленное сообщение в память
+                } else {
+                    alert('Не удалось отправить сообщение.');
+                }
+            } catch (error) {
+                alert('Ошибка сети.');
+            }
+        }
+
+        // Полная очистка локальной памяти (если нужно начать с нуля)
+        function clearAllData() {
+            if (confirm("Вы уверены, что хотите удалить все сохраненные контакты и переписку?")) {
+                localStorage.clear();
+                location.reload();
+            }
+        }
+
+        // Запуск логики
+        initData();
+        setInterval(checkNewMessages, 2000);
+    </script>
+</body>
+</html>
