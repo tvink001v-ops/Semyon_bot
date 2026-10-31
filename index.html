@@ -55,15 +55,21 @@
     </div>
 
     <script>
-        // СТАРЫЙ ТОКЕН (скорее всего, уже отозван)
+        // ===== НАСТРОЙКИ =====
+        // Ваш старый токен (для теста)
         const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
-        const PROXY = 'https://corsproxy.io/?';
+        
+        // ВСТАВЬТЕ СЮДА URL ВАШЕГО CLOUDFLARE WORKER (без слэша на конце)
+        // Пример: 'https://telegram-proxy.vash-subdomain.workers.dev'
+        const WORKER_URL = 'ВСТАВЬТЕ_URL_ВАШЕГО_WORKER_СЮДА';
+
+        // ===== ДАЛЬШЕ НИЧЕГО МЕНЯТЬ НЕ НУЖНО =====
+        const API = WORKER_URL + '/bot' + BOT_TOKEN;
 
         let currentChatId = null;
         let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId'), 10) || 0;
         let chatsData = JSON.parse(localStorage.getItem('chatsData')) || {};
         let polling = false;
-        let errorShown = false; // Чтобы не спамить алертами
 
         function saveToStorage() {
             localStorage.setItem('chatsData', JSON.stringify(chatsData));
@@ -77,29 +83,17 @@
         }
 
         async function checkNewMessages() {
-            if (polling) return;
+            if (polling || WORKER_URL.includes('ВСТАВЬТЕ')) return;
             polling = true;
             
-            const targetUrl = `https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
-            const url = PROXY + encodeURIComponent(targetUrl);
+            const url = `${API}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
             
             try {
                 const response = await fetch(url);
-                
-                // Если токен неверный (401), Telegram вернет ошибку
-                if (!response.ok) {
-                    const errData = await response.json().catch(() => ({}));
-                    if (errData.description && !errorShown) {
-                        console.warn('ОТВЕТ TELEGRAM:', errData.description);
-                        errorShown = true;
-                    }
-                    return;
-                }
-                
+                if (!response.ok) return;
                 const data = await response.json();
 
                 if (Array.isArray(data.result) && data.result.length > 0) {
-                    errorShown = false; // Сбрасываем флаг при успехе
                     data.result.forEach(update => {
                         lastUpdateId = update.update_id;
                         if (update.message && update.message.text) {
@@ -117,8 +111,7 @@
                     saveToStorage();
                 }
             } catch (error) {
-                // Ошибки прокси (corsproxy) или сети
-                console.warn('Ошибка сети или прокси:', error.message);
+                console.error('Ошибка сети:', error);
             } finally {
                 polling = false;
             }
@@ -177,9 +170,12 @@
             const text = input.value.trim();
             
             if (!text || !currentChatId) return;
+            if (WORKER_URL.includes('ВСТАВЬТЕ')) {
+                alert('Сначала вставьте URL вашего Cloudflare Worker в код!');
+                return;
+            }
 
-            const targetUrl = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`;
-            const url = PROXY + encodeURIComponent(targetUrl);
+            const url = `${API}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`;
 
             btn.disabled = true;
             try {
@@ -191,7 +187,7 @@
                     input.value = '';
                     saveToStorage();
                 } else {
-                    alert('Не удалось отправить. Скорее всего, токен недействителен.');
+                    alert('Ошибка отправки. Возможно, токен неверный.');
                 }
             } catch (error) {
                 alert('Ошибка сети: ' + error.message);
