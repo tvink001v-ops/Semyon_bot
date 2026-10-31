@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Telegram Панель (Через Прокси)</title>
+    <title>Telegram Панель управления</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
         body { display: flex; height: 100vh; background-color: #e7ebf0; }
@@ -29,7 +29,7 @@
 <body>
 
     <div class="sidebar">
-        <div class="sidebar-header">Контакты Бота (Proxy Mode)</div>
+        <div class="sidebar-header">Контакты Бота</div>
         <div class="contacts-list" id="contactsList"></div>
     </div>
 
@@ -48,8 +48,8 @@
     <script>
         const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
         
-        // Используем рабочий прокси-домен вместо api.telegram.org
-        const API_BASE = 'https://telegram-proxy.org'; 
+        // Специальный CORS-прокси шлюз, который обходит любые блокировки провайдеров
+        const API_BASE = 'https://corsproxy.io'; 
         
         let currentChatId = null;
         let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId')) || 0; 
@@ -66,7 +66,6 @@
             localStorage.setItem('lastUpdateId', lastUpdateId);
         }
 
-        // Автоматический опрос Telegram через прокси
         async function checkNewMessages() {
             const url = `${API_BASE}/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
             
@@ -100,7 +99,7 @@
                     saveToStorage(); 
                 }
             } catch (error) {
-                console.error("Ошибка опроса через Прокси:", error);
+                console.error("Ошибка сети:", error);
             }
         }
 
@@ -145,7 +144,6 @@
             container.scrollTop = container.scrollHeight;
         }
 
-        // Отправка ответа через прокси
         async function sendMessage() {
             const input = document.getElementById('messageInput');
             const text = input.value.trim();
@@ -174,15 +172,14 @@
         }
 
         function clearAllData() {
-            if (confirm("Вы уверены, что хотите удалить все сохраненные контакты?")) {
+            if (confirm("Вы уверены, что хотите очистить базу контактов?")) {
                 localStorage.clear();
                 location.reload();
             }
         }
 
-        // Запуск
         initData();
-        setInterval(checkNewMessages, 2000); // Проверка раз в 2 секунды
+        setInterval(checkNewMessages, 2000); 
     </script>
 </body>
 </html>
