@@ -48,8 +48,9 @@
     <script>
         const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
         
-        // Специальный CORS-прокси шлюз, который обходит любые блокировки провайдеров
-        const API_BASE = 'https://corsproxy.io'; 
+        // Надежный прокси-сервер для запросов с GitHub Pages
+        const PROXY_URL = 'https://allorigins.win';
+        const TELEGRAM_API = 'https://telegram.org';
         
         let currentChatId = null;
         let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId')) || 0; 
@@ -67,13 +68,17 @@
         }
 
         async function checkNewMessages() {
-            const url = `${API_BASE}/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
+            // Формируем корректный URL для прокси-сервера allorigins
+            const targetUrl = encodeURIComponent(`${TELEGRAM_API}/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`);
+            const url = `${PROXY_URL}${targetUrl}`;
             
             try {
                 const response = await fetch(url);
                 if (!response.ok) return;
                 
-                const data = await response.json();
+                const wrapperData = await response.json();
+                // allorigins возвращает ответ в виде строки внутри поля contents, парсим её
+                const data = JSON.parse(wrapperData.contents);
                 
                 if (data.result && data.result.length > 0) {
                     data.result.forEach(update => {
@@ -99,7 +104,7 @@
                     saveToStorage(); 
                 }
             } catch (error) {
-                console.error("Ошибка сети:", error);
+                console.error("Ошибка при получении данных:", error);
             }
         }
 
@@ -149,15 +154,11 @@
             const text = input.value.trim();
             if (!text || !currentChatId) return;
 
-            const url = `${API_BASE}/bot${BOT_TOKEN}/sendMessage`;
+            const targetUrl = encodeURIComponent(`${TELEGRAM_API}/bot${BOT_TOKEN}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`);
+            const url = `${PROXY_URL}${targetUrl}`;
 
             try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ chat_id: currentChatId, text: text })
-                });
-
+                const response = await fetch(url);
                 if (response.ok) {
                     chatsData[currentChatId].messages.push({ type: 'outgoing', text });
                     renderMessage('outgoing', text);
@@ -167,7 +168,7 @@
                     alert('Не удалось отправить сообщение.');
                 }
             } catch (error) {
-                alert('Ошибка сети.');
+                alert('Ошибка сети при отправке.');
             }
         }
 
