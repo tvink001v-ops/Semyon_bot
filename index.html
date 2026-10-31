@@ -6,11 +6,9 @@
     <title>Telegram Mobile</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        
         body, html { height: 100%; overflow: hidden; background-color: #ffffff; }
-
         .app-container { display: flex; width: 200vw; height: 100%; transition: transform 0.25s ease-in-out; }
-        
+
         /* Экран 1: Список контактов */
         .screen-contacts { width: 100vw; height: 100%; display: flex; flex-direction: column; background: white; }
         .header { height: 60px; background: #507299; color: white; display: flex; align-items: center; padding: 0 20px; font-weight: bold; font-size: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -29,12 +27,13 @@
         .message { max-width: 75%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.4; box-shadow: 0 1px 1px rgba(0,0,0,0.05); }
         .message.incoming { background: white; align-self: flex-start; border-top-left-radius: 4px; }
         .message.outgoing { background: #effdde; align-self: flex-end; border-top-right-radius: 4px; }
-        
+
         /* Поле ввода сообщения */
         .input-area { background: white; padding: 10px 15px; display: flex; gap: 10px; align-items: center; border-top: 1px solid #dadde1; padding-bottom: calc(10px + env(safe-area-inset-bottom)); }
         .input-area input { flex: 1; padding: 12px 16px; border: 1px solid #dbdbdb; border-radius: 24px; outline: none; font-size: 15px; background: #f9f9f9; }
         .input-area button { background: #4a90e2; color: white; border: none; padding: 10px 18px; border-radius: 24px; cursor: pointer; font-weight: bold; font-size: 15px; }
-        
+        .input-area button:disabled { opacity: 0.5; cursor: default; }
+
         /* Переключатель экранов */
         .view-chat .app-container { transform: translateX(-100vw); }
     </style>
@@ -45,9 +44,7 @@
         <!-- ЭКРАН 1: Контакты -->
         <div class="screen-contacts">
             <div class="header">Telegram Бота</div>
-            <div class="contacts-list" id="contactsList">
-                <!-- Контакты загружаются автоматически -->
-            </div>
+            <div class="contacts-list" id="contactsList"></div>
         </div>
 
         <!-- ЭКРАН 2: Чат -->
@@ -59,19 +56,26 @@
             <div class="messages-container" id="messagesContainer"></div>
             <div class="input-area">
                 <input type="text" id="messageInput" placeholder="Сообщение..." onkeydown="if(event.key === 'Enter') sendMessage()">
-                <button onclick="sendMessage()">Отп.</button>
+                <button id="sendBtn" onclick="sendMessage()">Отп.</button>
             </div>
         </div>
     </div>
 
     <script>
+        // ВНИМАНИЕ: токен в браузере виден всем. Для продакшена — только через свой сервер.
         const BOT_TOKEN = '9056510066:AAGsqMSqp9XiJynAmfI8V90NA3gnMvsX5PY';
-        const PROXY_URL = 'https://allorigins.win';
-        const TELEGRAM_API = 'https://telegram.org';
+        const TG_API = 'https://api.telegram.org/bot' + BOT_TOKEN;
+        const PROXY = 'https://api.allorigins.win/raw?url=';
 
         let currentChatId = null;
-        let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId')) || 0; 
-        const chatsData = JSON.parse(localStorage.getItem('chatsData')) || {}; 
+        let lastUpdateId = parseInt(localStorage.getItem('lastUpdateId'), 10) || 0;
+        let chatsData = JSON.parse(localStorage.getItem('chatsData')) || {};
+        let polling = false;
+
+        function saveToStorage() {
+            localStorage.setItem('chatsData', JSON.stringify(chatsData));
+            localStorage.setItem('lastUpdateId', String(lastUpdateId));
+        }
 
         function initData() {
             Object.keys(chatsData).forEach(chatId => {
@@ -79,28 +83,33 @@
             });
         }
 
-        function saveToStorage() {
-            localStorage.setItem('chatsData', JSON.stringify(chatsData));
-            localStorage.setItem('lastUpdateId', lastUpdateId);
-        }
-
         async function checkNewMessages() {
-            const targetUrl = encodeURIComponent(`${TELEGRAM_API}/bot${BOT_TOKEN}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`);
-            
+            if (polling) return;
+            polling = true;
+            const targetUrl = `${TG_API}/getUpdates?offset=${lastUpdateId + 1}&timeout=1`;
+            const proxyUrl = PROXY + encodeURIComponent(targetUrl);
             try {
-                const response = await fetch(`${PROXY_URL}${targetUrl}`);
+                const response = await fetch(proxyUrl);
                 if (!response.ok) return;
-                
-                const wrapperData = await response.json();
-                const data = JSON.parse(wrapperData.contents);
-                
-                if (data.result && data.result.length > 0) {
+
+                const wrapperText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(wrapperText);
+                } catch (e) {
+                    console.error('Прокси вернул не JSON:', wrapperText.slice(0, 200));
+                    return;
+                }
+
+                if (Array.isArray(data.result) && data.result.length > 0) {
                     data.result.forEach(update => {
                         lastUpdateId = update.update_id;
 
                         if (update.message && update.message.text) {
                             const chatId = update.message.chat.id;
-                            const username = update.message.from.first_name || update.message.from.username || "Пользователь";
+                            const username = update.message.from.first_name
+                                || update.message.from.username
+                                || 'Пользователь';
                             const text = update.message.text;
 
                             if (!chatsData[chatId]) {
@@ -110,92 +119,100 @@
                             chatsData[chatId].messages.push({ type: 'incoming', text });
                             addContactToList(chatId, username);
 
-                            if (currentChatId == chatId) {
+                            if (String(currentChatId) === String(chatId)) {
                                 renderMessage('incoming', text);
                             }
                         }
                     });
-                    saveToStorage(); 
+                    saveToStorage();
                 }
             } catch (error) {
-                console.error("Ошибка сети:", error);
+                console.error('Ошибка сети:', error);
+            } finally {
+                polling = false;
             }
         }
 
         function addContactToList(chatId, username) {
             const list = document.getElementById('contactsList');
-            let item = document.querySelector(`[data-chat-id="${chatId}"]`);
+            let item = document.querySelector(`[data-chat-id="${CSS.escape(String(chatId))}"]`);
 
-            // Берём последнее сообщение для превью
-            const lastMsg = chatsData[chatId].messages[chatsData[chatId].messages.length - 1]?.text || "";
+            const lastMsg = chatsData[chatId].messages[chatsData[chatId].messages.length - 1]?.text || '';
+            const preview = lastMsg.length > 30 ? lastMsg.substring(0, 30) + '...' : lastMsg;
 
             if (!item) {
                 item = document.createElement('div');
                 item.className = 'contact-item';
-                item.setAttribute('data-chat-id', chatId);
-                list.insertBefore(item, list.firstChild); // Новые чаты наверх
+                item.setAttribute('data-chat-id', String(chatId));
+                list.insertBefore(item, list.firstChild);
             }
 
             item.innerHTML = `
-                <div class="avatar">${username.substring(0,2).toUpperCase()}</div>
+                <div class="avatar">${username.substring(0, 2).toUpperCase()}</div>
                 <div class="contact-details">
                     <b>${username}</b>
-                    <p>${lastMsg.length > 30 ? lastMsg.substring(0,30) + '...' : lastMsg}</p>
+                    <p>${preview}</p>
                 </div>
             `;
-            
+
             item.onclick = () => selectChat(chatId);
         }
 
         function selectChat(chatId) {
             currentChatId = chatId;
-            document.body.classList.add('view-chat'); // Анимация перехода в чат
+            document.body.classList.add('view-chat');
             document.getElementById('currentChatName').innerText = chatsData[chatId].name;
-            
+
             const container = document.getElementById('messagesContainer');
             container.innerHTML = '';
-            chatsData[chatId].messages.forEach(msg => renderMessage(msg.type, msg.text));
+            chatsData[chatId].messages.forEach(msg => renderMessage(msg.type, msg.text, false));
+            container.scrollTop = container.scrollHeight;
         }
 
         function goBack() {
-            document.body.classList.remove('view-chat'); // Анимация возврата к списку
+            document.body.classList.remove('view-chat');
             currentChatId = null;
         }
 
-        function renderMessage(type, text) {
+        function renderMessage(type, text, scroll = true) {
             const container = document.getElementById('messagesContainer');
             const div = document.createElement('div');
             div.className = `message ${type}`;
             div.innerText = text;
             container.appendChild(div);
-            container.scrollTop = container.scrollHeight;
+            if (scroll) container.scrollTop = container.scrollHeight;
         }
 
         async function sendMessage() {
             const input = document.getElementById('messageInput');
+            const btn = document.getElementById('sendBtn');
             const text = input.value.trim();
             if (!text || !currentChatId) return;
 
-            const targetUrl = encodeURIComponent(`${TELEGRAM_API}/bot${BOT_TOKEN}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`);
+            const targetUrl = `${TG_API}/sendMessage?chat_id=${currentChatId}&text=${encodeURIComponent(text)}`;
+            const proxyUrl = PROXY + encodeURIComponent(targetUrl);
 
+            btn.disabled = true;
             try {
-                const response = await fetch(`${PROXY_URL}${targetUrl}`);
+                const response = await fetch(proxyUrl);
                 if (response.ok) {
                     chatsData[currentChatId].messages.push({ type: 'outgoing', text });
                     renderMessage('outgoing', text);
-                    addContactToList(currentChatId, chatsData[currentChatId].name); // Обновляем текст в списке
+                    addContactToList(currentChatId, chatsData[currentChatId].name);
                     input.value = '';
-                    saveToStorage(); 
+                    saveToStorage();
                 } else {
                     alert('Не удалось отправить.');
                 }
             } catch (error) {
                 alert('Ошибка сети.');
+            } finally {
+                btn.disabled = false;
             }
         }
 
         initData();
-        setInterval(checkNewMessages, 2000); 
+        setInterval(checkNewMessages, 2000);
     </script>
 </body>
 </html>
